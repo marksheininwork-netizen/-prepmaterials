@@ -9,7 +9,7 @@ permissions:
   id-token: write
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -22,5 +22,14 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
+      - name: Wait for artifact metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 30); do
+            if gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts --jq '.artifacts[] | select(.name == "github-pages") | .id' | grep -q '[0-9]'; then exit 0; fi
+            sleep 5
+          done
+          exit 1
       - uses: actions/deploy-pages@v4
         id: deployment
